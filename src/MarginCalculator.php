@@ -137,27 +137,48 @@ class MarginCalculator
         $registry = $this->initializeRegistry($agenda);
 
         foreach ($nBallots as $nBallot) {
-            //a map of candidate id to their integer rank
-            $candidateIdToRank = $this->getCandidateIdToRankMap($nBallot);
-            $ballotCount = $nBallot->getCount();
-            foreach ($agenda->getCandidates() as $outerCandidate) {
-                foreach ($agenda->getCandidates() as $innerCandidate) {
-                    if ($outerCandidate != $innerCandidate) {
-                        list($winner, $loser) = $this->getWinnerAndLoser(
-                            $outerCandidate,
-                            $innerCandidate,
-                            $candidateIdToRank
-                        );
-                        $this->incrementMarginInRegistry(
-                            $winner,
-                            $loser,
-                            $registry,
-                            $ballotCount
-                        );
-                    }
+            $this->tallyNBallot($nBallot, $registry, $agenda);
+        }
+        return $registry;
+    }
+    public function tallyNBallot(NBallot $nBallot, MarginRegistry $registry, Agenda $agenda) : void
+    {
+        //a map of candidate id to their integer rank
+        $candidateIdToRank = $this->getCandidateIdToRankMap($nBallot);
+        $ballotCount = $nBallot->getCount();
+        $orderedPairs = $this->getOrderedPairs($agenda);
+        foreach ($orderedPairs as $pair) {
+            list($outerCandidate, $innerCandidate) = $pair;
+            list($winner, $loser) = $this->getWinnerAndLoser(
+                $outerCandidate,
+                $innerCandidate,
+                $candidateIdToRank
+            );
+            $this->incrementMarginInRegistry(
+                $winner,
+                $loser,
+                $registry,
+                $ballotCount
+            );
+        }
+    }
+    /**
+     * Returns all ordered pairs of Candidates in the election.
+     * @param Agenda $agenda the set of Candidates relevant to the election
+     * @return array of arrays. Each inner array contains two Candidates.
+     * The outer array is of length N(N-1) because it omits pairs containing two of the same Candidates.
+     */
+    public function getOrderedPairs(Agenda $agenda) : array
+    {
+        $pairs = array();
+        foreach ($agenda->getCandidates() as $outerCandidate) {
+            foreach ($agenda->getCandidates() as $innerCandidate) {
+                if ($outerCandidate->getId() != $innerCandidate->getId()) {
+                    $pair = array($outerCandidate, $innerCandidate);
+                    $pairs[] = $pair;
                 }
             }
         }
-        return $registry;
+        return $pairs;
     }
 }
